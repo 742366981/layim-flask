@@ -1,0 +1,71 @@
+<!doctype html>
+<html>
+
+	<head>
+		<meta charset="utf-8">
+		<title>咨询</title>
+		<link rel="stylesheet" href="layui/css/layui.css" media="all">
+	</head>
+
+	<body>
+		<script src="layui/layui.js"></script>
+		<script src="js/socket.io.min.js"></script>
+		<script>
+			layui.use('layim', function(layim) {
+				//先来个客服模式压压精
+				if(!localStorage.id) {
+					var date = new Date();
+					var dateString = '';
+					dateString += date.getFullYear() + (Array(2).join('0') + (date.getMonth() + 1)).slice(-2) +
+						(Array(2).join('0') + date.getDate()).slice(-2)
+					localStorage.id = dateString + Math.random().toString().slice(2, 8);
+					localStorage.fromid = localStorage.id;
+				}
+				layim.config({
+					init: {
+						mine: {
+							username: "游客" + localStorage.id,
+							id: localStorage.id,
+							avatar: 'http://tp1.sinaimg.cn/5619439268/180/40030060651/1'
+						}
+					},
+					brief: true //是否简约模式（如果true则不显示主面板）
+				}).chat({
+					name: '客服姐姐',
+					type: 'friend',
+					avatar: "http://tva2.sinaimg.cn/crop.0.0.512.512.180/005LMAegjw8f2bp9qg4mrj30e80e8dg5.jpg",
+					id: '100000'
+				});
+				var socket = io.connect('http://127.0.0.1:5000/socket');
+				socket.on('message_user', function(response) {
+					if (response.toid == localStorage.id) {
+						layim.getMessage(response);
+					}
+				});
+				layim.on('sendMessage', function(info) {
+					var data = {
+						username: encodeURI(info.mine.username) //消息来源用户名
+							,
+						avatar: 'http://tp1.sinaimg.cn/5619439268/180/40030060651/1' //消息来源用户头像
+							,
+						id: info.mine.id //消息的来源ID（如果是私聊，则是用户id，如果是群聊，则是群组id）
+							,
+						type: info.to.type //聊天窗口来源类型，从发送消息传递的to里面获取
+							,
+						content: encodeURI(info.mine.content) //消息内容
+							,
+						cid: 0 //消息id，可不传。除非你要对消息进行一些操作（如撤回）
+							,
+						mine: false //是否我发送的消息，如果为true，则会显示在右方
+							,
+						fromid: info.mine.id //消息的发送者id（比如群组中的某个消息发送者），可用于自动解决浏览器多窗口时的一些问题
+							,
+						timestamp: new Date().getTime() //服务端时间戳毫秒数。注意：如果你返回的是标准的 unix 时间戳，记得要 *1000
+					}
+					socket.emit('message_admin', data);
+				});
+			});
+		</script>
+	</body>
+
+</html>
